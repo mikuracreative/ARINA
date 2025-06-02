@@ -4,7 +4,6 @@ import threading
 
 app = Flask(__name__)
 
-# Modern Tailwind CSS-based dashboard UI template
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +47,6 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# Store bot start time here; update this from your bot.py when you start dashboard
 bot_start_time = datetime.now(timezone.utc)
 
 @app.route("/")
