@@ -24,49 +24,49 @@
 
 ### 1. 🧩 Clone the Repo
 
-\`\`\`bash
+```
 git clone https://github.com/mikuracreative/Ironimus.git
 cd Ironimus
-\`\`\`
+```
 
 ### 2. 🧪 Create a Virtual Environment (Recommended)
 
-\`\`\`bash
+```
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-\`\`\`
+```
 
 ### 3. 📦 Install Dependencies
 
-\`\`\`bash
+```
 pip install -r requirements.txt
-\`\`\`
+```
 
 ### 4. 🔐 Configure Environment
 
 Create a `.env` file in the root with:
 
-\`\`\`
+```
 DISCORD_TOKEN=your_discord_bot_token_here
 JIGSAWSTACK_API_KEY=your_jigsawstack_api_key_here
 LOGGING_CHANNEL_ID=your_logging_channel_id_here
 GUILD_ID=your_guild_id_here
-\`\`\`
+```
 
 ---
 
 ## ▶️ Running the Bot
 
-\`\`\`bash
+```
 python bot.py
-\`\`\`
+```
 
 🟢 Once running, you’ll see:
 
-\`\`\`
+```
 Bot connected as YourBotName
 Dashboard running at http://localhost:8080
-\`\`\`
+```
 
 ---
 
