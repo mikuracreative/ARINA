@@ -37,7 +37,7 @@ Ironimus is a powerful Discord bot that automatically scans images posted in you
 
 2. **Install dependencies:**
    ```bash
-   npm install
+   npm install discord.js jigsawstack
    ```
 
 3. **Configure the bot:**
@@ -74,7 +74,7 @@ Each entry includes the user, channel, detection type, and timestamp.
 
 To prevent abuse or flooding:
 
-- Each user can have **up to 3 deleted images per 10 minutes**
+- Each user can have **up to 20 deleted images per 10 minutes**
 - If a user exceeds the limit, Ironimus temporarily stops deleting their messages
 - A warning is sent to the log channel
 
