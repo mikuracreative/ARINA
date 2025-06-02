@@ -1,0 +1,5 @@
+discord.py
+jigsawstack
+Flask
+aiohttp
+python-dotenv
