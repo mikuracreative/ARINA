@@ -1,4 +1,4 @@
-# Discord NSFW Image Scanner Bot
+# Ironimus
 
 This Discord bot scans all images posted in a specific server using the [JigsawStack API](https://jigsawstack.com/) to detect NSFW content, nudity, and gore. It deletes flagged images, logs detections to a designated logging channel, and optionally DMs the user with the reason.
 
