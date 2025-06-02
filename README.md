@@ -1,132 +1,116 @@
-# Ironimus
+# 🛡️ **Ironimus** — Smart Image Moderation Bot for Discord
 
-This Discord bot scans all images posted in a specific server using the [JigsawStack API](https://jigsawstack.com/) to detect NSFW content, nudity, and gore. It deletes flagged images, logs detections to a designated logging channel, and optionally DMs the user with the reason.
+**Ironimus** is a powerful Discord bot that scans every image posted in your server using the [JigsawStack API](https://jigsawstack.com/) to detect **NSFW**, **nudity**, and **gore** 🔍. It removes flagged content, logs events to a dedicated channel, and can even DM users with the reason 📩.
 
-The bot also includes:
-- Image caching to avoid re-scanning the same image URL
-- Per-user rate limiting / cooldowns
-- Persistent audit logs to a local file
-- A simple modern dashboard showing bot stats and logs (runs on port 8080)
+> 🚀 **Want reliable hosting for your bot?** Check out Zap-Hosting:  
+> 👉 <a href="https://zap-hosting.com/majestic">ZAP-Hosting (Affiliate Link)</a>
 
 ---
 
-## Features
+## ✨ Features
 
-- Automatically scans all posted images in your server
-- Deletes messages containing inappropriate images
-- Logs detection events in a dedicated logging channel
-- Sends a direct message to users whose images were removed
-- Caches scanned images in SQLite to avoid repeated scans
-- Rate limits image scanning per user to avoid abuse
-- Audit trail saved in `audit.log`
-- Flask-based dashboard showing uptime, recent logs, and stats
+- 🧠 **AI-Powered Scanning** – Automatically detects inappropriate images
+- 🗑️ **Auto Deletes** – Removes offending messages instantly
+- 📋 **Logging** – Posts alerts in your logging channel
+- 📬 **Optional DM Notices** – Notifies users when their content is removed
+- 🧊 **Image Caching** – Avoids re-scanning the same images
+- ⏳ **Rate Limiting** – Prevents abuse (default: 5s cooldown per user)
+- 🧾 **Audit Logs** – All detections saved in `audit.log`
+- 🌐 **Web Dashboard** – Simple Flask dashboard with stats and logs
 
 ---
 
-## Setup
+## ⚙️ Setup
 
-### 1. Clone this repository
+### 1. 🧩 Clone the Repo
 
-```bash
+\`\`\`bash
 git clone https://github.com/mikuracreative/Ironimus.git
 cd Ironimus
-```
+\`\`\`
 
-### 2. Create and activate a Python virtual environment (recommended)
+### 2. 🧪 Create a Virtual Environment (Recommended)
 
-```bash
+\`\`\`bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+\`\`\`
 
-### 3. Install dependencies
+### 3. 📦 Install Dependencies
 
-```bash
+\`\`\`bash
 pip install -r requirements.txt
-```
+\`\`\`
 
-### 4. Create a `.env` file in the project root with the following:
+### 4. 🔐 Configure Environment
 
-```
+Create a `.env` file in the root with:
+
+\`\`\`
 DISCORD_TOKEN=your_discord_bot_token_here
 JIGSAWSTACK_API_KEY=your_jigsawstack_api_key_here
 LOGGING_CHANNEL_ID=your_logging_channel_id_here
 GUILD_ID=your_guild_id_here
-```
-
-- **DISCORD_TOKEN**: Your Discord bot token
-- **JIGSAWSTACK_API_KEY**: Your API key from JigsawStack
-- **LOGGING_CHANNEL_ID**: The channel ID where the bot will send detection logs
-- **GUILD_ID**: Your Discord server (guild) ID where the bot should scan images
+\`\`\`
 
 ---
 
-## Usage
+## ▶️ Running the Bot
 
-Run the bot with:
-
-```bash
+\`\`\`bash
 python bot.py
-```
+\`\`\`
 
-You should see output like:
+🟢 Once running, you’ll see:
 
-```
+\`\`\`
 Bot connected as YourBotName
-Dashboard running at http://localhost:8080 or http://your.local.ip:8080
-```
-
-- The dashboard will be accessible on port 8080 of your machine.
-- The bot will start monitoring images and act accordingly.
+Dashboard running at http://localhost:8080
+\`\`\`
 
 ---
 
-## Dashboard
+## 📊 Dashboard
 
-The dashboard is a simple Flask app that shows:
+Access it at `http://localhost:8080` to see:
 
-- Bot uptime
-- Recent detection logs (from audit log file)
-- Basic statistics
-
-Access it by navigating to `http://localhost:8080` in your browser.
+- 🕒 Bot uptime  
+- 📁 Recent logs  
+- 📈 Basic stats  
 
 ---
 
-## Audit Logs
+## 📚 Audit Trail
 
-All detection events are saved to `audit.log` with timestamps for audit and review purposes.
-
----
-
-## Requirements
-
-See `requirements.txt` for all Python dependencies.
+All detection events are saved in `audit.log` with timestamps for easy review 🗂️.
 
 ---
 
-## Notes
+## ✅ Permissions Required
 
-- The bot only works on the server (`GUILD_ID`) you specify.
-- Make sure the bot has the necessary permissions:
-  - Read Message History
-  - Read Messages / View Channels
-  - Manage Messages (to delete)
-  - Send Messages
-  - Embed Links (for logging embeds)
-  - Send Direct Messages (to notify users)
-- Rate limiting is set to 5 seconds per user by default to avoid spam.
+Make sure your bot has:
+
+- 🔍 Read Message History  
+- 👀 View Channels  
+- 🗑️ Manage Messages  
+- 📨 Send Messages & DMs  
+- 🔗 Embed Links  
 
 ---
 
-## License
+## 📌 Notes
+
+- Works **only** in the specified `GUILD_ID`
+- Default cooldown: **5s per user**
+
+---
+
+## 📄 License
 
 MIT License
 
 ---
 
-## Contact
+## 🙋‍♂️ Need Help?
 
-For questions or support, please open an issue or contact me directly.
-
----
+Open an issue or reach out directly — happy to help!
