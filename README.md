@@ -28,8 +28,8 @@ The bot also includes:
 ### 1. Clone this repository
 
 ```bash
-git clone https://github.com/yourusername/discord-nsfw-scanner.git
-cd discord-nsfw-scanner
+git clone https://github.com/mikuracreative/Ironimus.git
+cd Ironimus
 ```
 
 ### 2. Create and activate a Python virtual environment (recommended)
