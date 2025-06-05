@@ -85,7 +85,7 @@ All events saved to `audit.log`.
 
 ## 📄 License
 
-MIT
+View LICENSE.md
 
 ---
 
