@@ -1,116 +1,94 @@
-# 🛡️ **Ironimus** — Smart Image Moderation Bot for Discord
+# 🛡️ Ironimus — Image Moderation Bot for Discord
 
-**Ironimus** is a powerful Discord bot that scans every image posted in your server using the [JigsawStack API](https://jigsawstack.com/) to detect **NSFW**, **nudity**, and **gore** 🔍. It removes flagged content, logs events to a dedicated channel, and can even DM users with the reason 📩.
+**Ironimus** scans all images using [JigsawStack](https://jigsawstack.com/) to detect **NSFW**, **nudity**, and **gore**. It removes flagged content, logs it, and can notify users.
 
-> 🚀 **Want reliable hosting for your bot?** Check out Zap-Hosting:  
-> 👉 <a href="https://zap-hosting.com/majestic">ZAP-Hosting (Affiliate Link)</a>
+> 🚀 Hosting? Use [ZAP-Hosting (Affiliate)](https://zap-hosting.com/majestic)
 
 ---
 
 ## ✨ Features
 
-- 🧠 **AI-Powered Scanning** – Automatically detects inappropriate images
-- 🗑️ **Auto Deletes** – Removes offending messages instantly
-- 📋 **Logging** – Posts alerts in your logging channel
-- 📬 **Optional DM Notices** – Notifies users when their content is removed
-- 🧊 **Image Caching** – Avoids re-scanning the same images
-- ⏳ **Rate Limiting** – Prevents abuse (default: 5s cooldown per user)
-- 🧾 **Audit Logs** – All detections saved in `audit.log`
-- 🌐 **Web Dashboard** – Simple Flask dashboard with stats and logs
+- 🧠 AI image detection  
+- 🗑️ Auto message deletion  
+- 📋 Logging to channel  
+- 📬 Optional user DMs  
+- 🧊 Image caching  
+- ⏳ 5s per-user cooldown  
+- 🧾 `audit.log` for records  
+- 🌐 Web dashboard (Flask)
 
 ---
 
 ## ⚙️ Setup
 
-### 1. 🧩 Clone the Repo
-
-```
+```bash
 git clone https://github.com/mikuracreative/Ironimus.git
 cd Ironimus
-```
 
-### 2. 🧪 Create a Virtual Environment (Recommended)
-
-```
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-### 3. 📦 Install Dependencies
-
-```
 pip install -r requirements.txt
 ```
 
-### 4. 🔐 Configure Environment
-
-Create a `.env` file in the root with:
+Create a `.env` file:
 
 ```
-DISCORD_TOKEN=your_discord_bot_token_here
-JIGSAWSTACK_API_KEY=your_jigsawstack_api_key_here
-LOGGING_CHANNEL_ID=your_logging_channel_id_here
-GUILD_ID=your_guild_id_here
+DISCORD_TOKEN=your_token
+JIGSAWSTACK_API_KEY=your_api_key
+LOGGING_CHANNEL_ID=channel_id
+GUILD_ID=guild_id
 ```
 
 ---
 
-## ▶️ Running the Bot
+## ▶️ Run
 
-```
+```bash
 python bot.py
 ```
 
-🟢 Once running, you’ll see:
-
-```
-Bot connected as YourBotName
-Dashboard running at http://localhost:8080
-```
+Access the dashboard at http://localhost:8080 or the address shown in the console.
 
 ---
 
-## 📊 Dashboard
+## 📊 Dashboard Shows
 
-Access it at `http://localhost:8080` to see:
-
-- 🕒 Bot uptime  
-- 📁 Recent logs  
-- 📈 Basic stats  
+- Uptime  
+- Logs  
+- Basic stats
 
 ---
 
-## 📚 Audit Trail
+## 📚 Logs
 
-All detection events are saved in `audit.log` with timestamps for easy review 🗂️.
+All events saved to `audit.log`.
 
 ---
 
-## ✅ Permissions Required
+## ✅ Bot Needs
 
-Make sure your bot has:
-
-- 🔍 Read Message History  
-- 👀 View Channels  
-- 🗑️ Manage Messages  
-- 📨 Send Messages & DMs  
-- 🔗 Embed Links  
+- Read history  
+- View channels  
+- Manage messages  
+- Send messages & DMs  
+- Embed links
 
 ---
 
 ## 📌 Notes
 
-- Works **only** in the specified `GUILD_ID`
-- Default cooldown: **5s per user**
+- Only works in `GUILD_ID`  
+- Default cooldown: **5s/user**
 
 ---
 
 ## 📄 License
 
-MIT License
+MIT
 
 ---
 
-## 🙋‍♂️ Need Help?
+## 🙋‍♂️ Help?
 
-Open an issue or reach out directly — happy to help!
+Open an issue or contact us!
