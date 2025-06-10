@@ -2,24 +2,31 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
-import sqlite3
+import atexit
+import aiosqlite
 from datetime import datetime, timezone
 from jigsawstack import JigsawStack
 from dashboard import start_dashboard, bot_start_time
 import socket
 from dotenv import load_dotenv
+import traceback
 
 # Load .env variables
 load_dotenv()
 
 # --- Config from environment ---
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-JIGSAW_API_KEY = os.getenv("JIGSAWSTACK_API_KEY")  
+JIGSAW_API_KEY = os.getenv("JIGSAWSTACK_API_KEY")
 LOGGING_CHANNEL_ID = int(os.getenv("LOGGING_CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 
+# ✅ Security: Validate critical configuration
+if not DISCORD_TOKEN or not JIGSAW_API_KEY:
+    raise ValueError("Missing DISCORD_TOKEN or JIGSAWSTACK_API_KEY in environment.")
+
 # --- Discord intents and bot ---
 intents = discord.Intents.default()
+intents.messages = True
 intents.message_content = True
 intents.guilds = True
 
@@ -29,21 +36,18 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 jigsaw = JigsawStack(api_key=JIGSAW_API_KEY)
 
 # --- Database for caching scanned images ---
-conn = sqlite3.connect("cache.db")
-c = conn.cursor()
-c.execute(
-    """
-CREATE TABLE IF NOT EXISTS scanned_images (
-    url TEXT PRIMARY KEY,
-    scanned_at TEXT
-)
-"""
-)
-conn.commit()
+db_conn = None
+
+def close_db():
+    if db_conn:
+        asyncio.run(db_conn.close())
+
+atexit.register(close_db)
 
 # --- Rate limiting per user ---
-SCAN_COOLDOWN_SECONDS = 5
-last_scan_time = {}
+from discord.ext.commands import CooldownMapping, BucketType
+SCAN_COOLDOWN_SECONDS = 2
+cooldown = CooldownMapping.from_cooldown(1, SCAN_COOLDOWN_SECONDS, BucketType.user)
 
 # --- Audit log file ---
 AUDIT_LOG_FILE = "audit.log"
@@ -57,23 +61,41 @@ def log_audit(message: str):
 
 async def scan_image(url: str):
     try:
-        # Run blocking call in thread pool to avoid blocking event loop
+        # ⚡ Async safety: Run blocking call in thread pool
         response = await asyncio.to_thread(jigsaw.validate.nsfw, {"url": url})
         if not response["success"]:
             return None
         return response
     except Exception as e:
         print(f"API error: {e}")
+        traceback.print_exc()
         return None
+
+logging_channel = None
 
 @bot.event
 async def on_ready():
+    global db_conn, logging_channel
     print(f"Bot connected as {bot.user}")
     start_dashboard()
-    # Print dashboard URL info
     host_name = socket.gethostname()
     local_ip = socket.gethostbyname(host_name)
     print(f"Dashboard running at http://localhost:8080 or http://{local_ip}:8080")
+
+    # ⚡ Async safety: Open DB connection
+    db_conn = await aiosqlite.connect("cache.db")
+    await db_conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS scanned_images (
+            url TEXT PRIMARY KEY,
+            scanned_at TEXT
+        )
+        """
+    )
+    await db_conn.commit()
+
+    # 🧹 Cleanup: Cache logging channel
+    logging_channel = bot.get_channel(LOGGING_CHANNEL_ID)
 
 @bot.event
 async def on_message(message):
@@ -83,75 +105,79 @@ async def on_message(message):
         return
 
     now = datetime.now(timezone.utc)
-    user_id = message.author.id
-    last_time = last_scan_time.get(user_id)
-    if last_time and (now - last_time).total_seconds() < SCAN_COOLDOWN_SECONDS:
+
+    # 🔁 Rate limit
+    bucket = cooldown.get_bucket(message)
+    if bucket.update_rate_limit():
         return
-    last_scan_time[user_id] = now
 
     for attachment in message.attachments:
         if not attachment.content_type or not attachment.content_type.startswith("image"):
             continue
         url = attachment.url
 
-        # Check cache (avoid rescanning)
-        c.execute("SELECT scanned_at FROM scanned_images WHERE url = ?", (url,))
-        if c.fetchone():
-            continue  # Already scanned
+        try:
+            async with db_conn.execute("SELECT scanned_at FROM scanned_images WHERE url = ?", (url,)) as cursor:
+                if await cursor.fetchone():
+                    continue
 
-        result = await scan_image(url)
-        if result is None:
-            continue
+            result = await scan_image(url)
+            if result is None:
+                continue
 
-        nsfw = result.get("nsfw", False)
-        nudity = result.get("nudity", False)
-        gore = result.get("gore", False)
-        nsfw_score = result.get("nsfw_score", 0)
-        nudity_score = result.get("nudity_score", 0)
-        gore_score = result.get("gore_score", 0)
+            nsfw = result.get("nsfw", False)
+            nudity = result.get("nudity", False)
+            gore = result.get("gore", False)
+            nsfw_score = result.get("nsfw_score", 0)
+            nudity_score = result.get("nudity_score", 0)
+            gore_score = result.get("gore_score", 0)
 
-        # Cache the scanned image
-        c.execute(
-            "INSERT OR REPLACE INTO scanned_images (url, scanned_at) VALUES (?, ?)",
-            (url, now.isoformat()),
-        )
-        conn.commit()
+            # Cache scanned image
+            await db_conn.execute(
+                "INSERT OR REPLACE INTO scanned_images (url, scanned_at) VALUES (?, ?)",
+                (url, now.isoformat())
+            )
+            await db_conn.commit()
 
-        if nsfw or nudity or gore:
-            try:
-                await message.delete()
-            except Exception as e:
-                print(f"Failed to delete message: {e}")
+            if nsfw or nudity or gore:
+                try:
+                    await message.delete()
+                except Exception as e:
+                    print(f"Failed to delete message: {e}")
+                    traceback.print_exc()
 
-            reasons = []
-            if nsfw:
-                reasons.append(f"NSFW (score: {nsfw_score:.2f})")
-            if nudity:
-                reasons.append(f"Nudity (score: {nudity_score:.2f})")
-            if gore:
-                reasons.append(f"Gore (score: {gore_score:.2f})")
-            reason_str = ", ".join(reasons)
+                reasons = []
+                if nsfw:
+                    reasons.append(f"NSFW (score: {nsfw_score:.2f})")
+                if nudity:
+                    reasons.append(f"Nudity (score: {nudity_score:.2f})")
+                if gore:
+                    reasons.append(f"Gore (score: {gore_score:.2f})")
+                reason_str = ", ".join(reasons)
 
-            log_msg = f"User: {message.author} | URL: {url} | {reason_str}"
-            log_audit(log_msg)
+                log_msg = f"User: {message.author} | URL: {url} | {reason_str}"
+                log_audit(log_msg)
 
-            if LOGGING_CHANNEL_ID:
-                channel = bot.get_channel(LOGGING_CHANNEL_ID)
-                if channel:
+                if logging_channel:
                     embed = discord.Embed(
                         title="NSFW/Gore/Nudity Detected and Deleted",
                         description=f"User: {message.author} ({message.author.id})\nURL: {url}\nReason: {reason_str}",
                         color=discord.Color.red(),
                         timestamp=now,
                     )
-                    await channel.send(embed=embed)
+                    await logging_channel.send(embed=embed)
 
-            try:
-                await message.author.send(
-                    f"Your image was removed because it was flagged as: {reason_str}."
-                )
-            except Exception:
-                pass
+                try:
+                    await message.author.send(
+                        f"Your image was removed because it was flagged as: {reason_str}."
+                    )
+                except Exception as e:
+                    print(f"Failed to notify user: {e}")
+                    traceback.print_exc()
+
+        except Exception as e:
+            print(f"Unexpected error while processing image: {e}")
+            traceback.print_exc()
 
     await bot.process_commands(message)
 
