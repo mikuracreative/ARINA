@@ -3,3 +3,4 @@ jigsawstack
 Flask
 aiohttp
 python-dotenv
+aiosqlite
