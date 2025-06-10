@@ -20,7 +20,6 @@ JIGSAW_API_KEY = os.getenv("JIGSAWSTACK_API_KEY")
 LOGGING_CHANNEL_ID = int(os.getenv("LOGGING_CHANNEL_ID", 0))
 GUILD_ID = int(os.getenv("GUILD_ID", 0))
 
-# ✅ Security: Validate critical configuration
 if not DISCORD_TOKEN or not JIGSAW_API_KEY:
     raise ValueError("Missing DISCORD_TOKEN or JIGSAWSTACK_API_KEY in environment.")
 
@@ -44,15 +43,12 @@ def close_db():
 
 atexit.register(close_db)
 
-# --- Rate limiting per user ---
 from discord.ext.commands import CooldownMapping, BucketType
 SCAN_COOLDOWN_SECONDS = 2
 cooldown = CooldownMapping.from_cooldown(1, SCAN_COOLDOWN_SECONDS, BucketType.user)
 
-# --- Audit log file ---
 AUDIT_LOG_FILE = "audit.log"
 
-# --- Helper to log audit info ---
 def log_audit(message: str):
     timestamp = datetime.now(timezone.utc).isoformat()
     line = f"[{timestamp}] {message}\n"
@@ -61,13 +57,15 @@ def log_audit(message: str):
 
 async def scan_image(url: str):
     try:
-        # ⚡ Async safety: Run blocking call in thread pool
+        print(f"🔍 Scanning image at URL: {url}")
         response = await asyncio.to_thread(jigsaw.validate.nsfw, {"url": url})
+        print(f"📦 Scan response: {response}")
         if not response["success"]:
+            print("❌ API call failed")
             return None
         return response
     except Exception as e:
-        print(f"API error: {e}")
+        print(f"🔥 API error during scanning: {e}")
         traceback.print_exc()
         return None
 
@@ -76,13 +74,12 @@ logging_channel = None
 @bot.event
 async def on_ready():
     global db_conn, logging_channel
-    print(f"Bot connected as {bot.user}")
+    print(f"✅ Bot connected as {bot.user}")
     start_dashboard()
     host_name = socket.gethostname()
     local_ip = socket.gethostbyname(host_name)
-    print(f"Dashboard running at http://localhost:8080 or http://{local_ip}:8080")
+    print(f"🌐 Dashboard running at http://localhost:8080 or http://{local_ip}:8080")
 
-    # ⚡ Async safety: Open DB connection
     db_conn = await aiosqlite.connect("cache.db")
     await db_conn.execute(
         """
@@ -94,8 +91,9 @@ async def on_ready():
     )
     await db_conn.commit()
 
-    # 🧹 Cleanup: Cache logging channel
     logging_channel = bot.get_channel(LOGGING_CHANNEL_ID)
+    if not logging_channel:
+        print(f"⚠️ Logging channel with ID {LOGGING_CHANNEL_ID} not found")
 
 @bot.event
 async def on_message(message):
@@ -104,25 +102,35 @@ async def on_message(message):
     if message.guild is None or message.guild.id != GUILD_ID:
         return
 
+    print(f"\n📨 Message from {message.author} (ID: {message.author.id}) with {len(message.attachments)} attachments")
+
     now = datetime.now(timezone.utc)
 
-    # 🔁 Rate limit
     bucket = cooldown.get_bucket(message)
     if bucket.update_rate_limit():
+        print("⏳ Rate limit triggered, skipping scan.")
         return
 
     for attachment in message.attachments:
+        print(f"📎 Attachment filename: {attachment.filename}")
+        print(f"📎 Attachment content type: {attachment.content_type}")
+
         if not attachment.content_type or not attachment.content_type.startswith("image"):
+            print("⚠️ Skipped non-image attachment")
             continue
+
         url = attachment.url
 
         try:
             async with db_conn.execute("SELECT scanned_at FROM scanned_images WHERE url = ?", (url,)) as cursor:
-                if await cursor.fetchone():
+                row = await cursor.fetchone()
+                if row:
+                    print(f"🗃️ Already scanned this URL: {url} at {row[0]}")
                     continue
 
             result = await scan_image(url)
             if result is None:
+                print("❌ Skipping due to invalid scan result")
                 continue
 
             nsfw = result.get("nsfw", False)
@@ -132,7 +140,8 @@ async def on_message(message):
             nudity_score = result.get("nudity_score", 0)
             gore_score = result.get("gore_score", 0)
 
-            # Cache scanned image
+            print(f"🧠 NSFW detection flags: nsfw={nsfw} ({nsfw_score}), nudity={nudity} ({nudity_score}), gore={gore} ({gore_score})")
+
             await db_conn.execute(
                 "INSERT OR REPLACE INTO scanned_images (url, scanned_at) VALUES (?, ?)",
                 (url, now.isoformat())
@@ -142,8 +151,9 @@ async def on_message(message):
             if nsfw or nudity or gore:
                 try:
                     await message.delete()
+                    print("🗑️ Message deleted due to detected content")
                 except Exception as e:
-                    print(f"Failed to delete message: {e}")
+                    print(f"❌ Failed to delete message: {e}")
                     traceback.print_exc()
 
                 reasons = []
@@ -160,7 +170,7 @@ async def on_message(message):
 
                 if logging_channel:
                     embed = discord.Embed(
-                        title="NSFW/Gore/Nudity Detected and Deleted",
+                        title="🔞 NSFW/Gore/Nudity Detected and Deleted",
                         description=f"User: {message.author} ({message.author.id})\nURL: {url}\nReason: {reason_str}",
                         color=discord.Color.red(),
                         timestamp=now,
@@ -169,14 +179,16 @@ async def on_message(message):
 
                 try:
                     await message.author.send(
-                        f"Your image was removed because it was flagged as: {reason_str}."
+                        f"🚫 Your image was removed because it was flagged as: {reason_str}."
                     )
                 except Exception as e:
-                    print(f"Failed to notify user: {e}")
+                    print(f"❌ Failed to notify user: {e}")
                     traceback.print_exc()
+            else:
+                print("✅ Image passed NSFW checks.")
 
         except Exception as e:
-            print(f"Unexpected error while processing image: {e}")
+            print(f"❌ Unexpected error while processing image: {e}")
             traceback.print_exc()
 
     await bot.process_commands(message)
