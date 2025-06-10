@@ -11,10 +11,8 @@ import socket
 from dotenv import load_dotenv
 import traceback
 
-# Load .env variables
 load_dotenv()
 
-# --- Config from environment ---
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 JIGSAW_API_KEY = os.getenv("JIGSAWSTACK_API_KEY")
 LOGGING_CHANNEL_ID = int(os.getenv("LOGGING_CHANNEL_ID", 0))
@@ -23,18 +21,14 @@ GUILD_ID = int(os.getenv("GUILD_ID", 0))
 if not DISCORD_TOKEN or not JIGSAW_API_KEY:
     raise ValueError("Missing DISCORD_TOKEN or JIGSAWSTACK_API_KEY in environment.")
 
-# --- Discord intents and bot ---
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-# --- JigsawStack client ---
 jigsaw = JigsawStack(api_key=JIGSAW_API_KEY)
 
-# --- Database for caching scanned images ---
 db_conn = None
 
 def close_db():
@@ -81,14 +75,12 @@ async def on_ready():
     print(f"🌐 Dashboard running at http://localhost:8080 or http://{local_ip}:8080")
 
     db_conn = await aiosqlite.connect("cache.db")
-    await db_conn.execute(
-        """
+    await db_conn.execute("""
         CREATE TABLE IF NOT EXISTS scanned_images (
             url TEXT PRIMARY KEY,
             scanned_at TEXT
         )
-        """
-    )
+    """)
     await db_conn.commit()
 
     logging_channel = bot.get_channel(LOGGING_CHANNEL_ID)
@@ -102,13 +94,13 @@ async def on_message(message):
     if message.guild is None or message.guild.id != GUILD_ID:
         return
 
-    print(f"\n📨 Message from {message.author} (ID: {message.author.id}) with {len(message.attachments)} attachments")
+    if message.attachments:
+        print(f"\n📨 Message from {message.author} (ID: {message.author.id}) with {len(message.attachments)} attachments")
 
     now = datetime.now(timezone.utc)
 
     bucket = cooldown.get_bucket(message)
     if bucket.update_rate_limit():
-        print("⏳ Rate limit triggered, skipping scan.")
         return
 
     for attachment in message.attachments:
@@ -133,14 +125,11 @@ async def on_message(message):
                 print("❌ Skipping due to invalid scan result")
                 continue
 
-            nsfw = result.get("nsfw", False)
-            nudity = result.get("nudity", False)
-            gore = result.get("gore", False)
             nsfw_score = result.get("nsfw_score", 0)
             nudity_score = result.get("nudity_score", 0)
             gore_score = result.get("gore_score", 0)
 
-            print(f"🧠 NSFW detection flags: nsfw={nsfw} ({nsfw_score}), nudity={nudity} ({nudity_score}), gore={gore} ({gore_score})")
+            print(f"🧠 Detection scores: nsfw={nsfw_score}, nudity={nudity_score}, gore={gore_score}")
 
             await db_conn.execute(
                 "INSERT OR REPLACE INTO scanned_images (url, scanned_at) VALUES (?, ?)",
@@ -148,20 +137,20 @@ async def on_message(message):
             )
             await db_conn.commit()
 
-            if nsfw or nudity or gore:
+            if nsfw_score >= 0.15 or nudity_score >= 0.15 or gore_score >= 0.15:
                 try:
                     await message.delete()
-                    print("🗑️ Message deleted due to detected content")
+                    print("🗑️ Message deleted due to score threshold")
                 except Exception as e:
                     print(f"❌ Failed to delete message: {e}")
                     traceback.print_exc()
 
                 reasons = []
-                if nsfw:
+                if nsfw_score >= 0.15:
                     reasons.append(f"NSFW (score: {nsfw_score:.2f})")
-                if nudity:
+                if nudity_score >= 0.15:
                     reasons.append(f"Nudity (score: {nudity_score:.2f})")
-                if gore:
+                if gore_score >= 0.15:
                     reasons.append(f"Gore (score: {gore_score:.2f})")
                 reason_str = ", ".join(reasons)
 
@@ -170,22 +159,25 @@ async def on_message(message):
 
                 if logging_channel:
                     embed = discord.Embed(
-                        title="🔞 NSFW/Gore/Nudity Detected and Deleted",
-                        description=f"User: {message.author} ({message.author.id})\nURL: {url}\nReason: {reason_str}",
-                        color=discord.Color.red(),
-                        timestamp=now,
+                        title="Content Deleted",
+                        color=0x393a41,
+                        timestamp=now
                     )
+                    embed.add_field(name="User", value=f"{message.author} ({message.author.id})", inline=False)
+                    embed.add_field(name="URL", value=f"{url}", inline=False)
+                    embed.add_field(name="Reason", value=f"{reason_str}", inline=False)
+                    embed.set_image(url="https://i.imgur.com/zmF8k7l.png")
                     await logging_channel.send(embed=embed)
 
                 try:
                     await message.author.send(
-                        f"🚫 Your image was removed because it was flagged as: {reason_str}."
+                        f"🚫 Your image was removed because it was flagged with: {reason_str}."
                     )
                 except Exception as e:
                     print(f"❌ Failed to notify user: {e}")
                     traceback.print_exc()
             else:
-                print("✅ Image passed NSFW checks.")
+                print("✅ Image passed score threshold.")
 
         except Exception as e:
             print(f"❌ Unexpected error while processing image: {e}")
