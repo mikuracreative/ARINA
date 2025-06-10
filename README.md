@@ -26,7 +26,7 @@
 #### 1. Clone the Repository
 
 ```
-git clone https://github.com/yourusername/arina-bot.git
+git clone https://github.com/mikuracreative/ARINA.git
 cd arina-bot
 ```
 
